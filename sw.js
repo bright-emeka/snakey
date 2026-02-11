@@ -1,6 +1,3 @@
-// Service Worker for Snake Game PWA
-// Enables offline play capabilities
-
 const CACHE_NAME = 'snake-game-v1';
 const ASSETS_TO_CACHE = [
     './',
@@ -10,7 +7,6 @@ const ASSETS_TO_CACHE = [
     './icons/icon-512.png'
 ];
 
-// Install event - cache all assets
 self.addEventListener('install', (event) => {
     event.waitUntil(
         caches.open(CACHE_NAME)
@@ -19,13 +15,11 @@ self.addEventListener('install', (event) => {
                 return cache.addAll(ASSETS_TO_CACHE);
             })
             .then(() => {
-                // Force the waiting service worker to become active
                 return self.skipWaiting();
             })
     );
 });
 
-// Activate event - clean up old caches
 self.addEventListener('activate', (event) => {
     event.waitUntil(
         caches.keys()
@@ -37,13 +31,11 @@ self.addEventListener('activate', (event) => {
                 );
             })
             .then(() => {
-                // Take control of all clients immediately
                 return self.clients.claim();
             })
     );
 });
 
-// Fetch event - serve from cache, fallback to network
 self.addEventListener('fetch', (event) => {
     event.respondWith(
         caches.match(event.request)
@@ -54,12 +46,10 @@ self.addEventListener('fetch', (event) => {
                 
                 return fetch(event.request)
                     .then((networkResponse) => {
-                        // Don't cache non-successful responses
                         if (!networkResponse || networkResponse.status !== 200 || networkResponse.type !== 'basic') {
                             return networkResponse;
                         }
                         
-                        // Clone the response for caching
                         const responseToCache = networkResponse.clone();
                         
                         caches.open(CACHE_NAME)
@@ -70,14 +60,12 @@ self.addEventListener('fetch', (event) => {
                         return networkResponse;
                     })
                     .catch(() => {
-                        // Return offline page or fallback if needed
                         return caches.match('./snake-game.html');
                     });
             })
     );
 });
 
-// Handle messages from the main thread
 self.addEventListener('message', (event) => {
     if (event.data && event.data.type === 'SKIP_WAITING') {
         self.skipWaiting();
