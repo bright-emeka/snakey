@@ -253,8 +253,10 @@
         let snake = [];           
         let food = {};            
         let direction = {};       
-        let nextDirection = {};   
+        // input buffer replaces simple nextDirection
+        let inputQueue = [];
         let score = 0;            
+        let highScore = parseInt(localStorage.getItem('snakeHighScore')) || 0;
         let gameLoop = null;      
         let isGameOver = false;   
 
@@ -283,7 +285,7 @@
             ];
 
             direction = DIRECTIONS.UP;
-            nextDirection = DIRECTIONS.UP;
+            inputQueue = [];
 
             
             score = 0;
@@ -322,7 +324,9 @@
         function updateGame() {
             if (isGameOver) return;
 
-            direction = nextDirection;
+            if (inputQueue.length > 0) {
+                direction = inputQueue.shift();
+            }
 
             
             const newHead = {
@@ -357,6 +361,15 @@
                 score++;
                 updateScore();
                 spawnFood();
+                playSound(440, 'square', 0.1);
+
+                // Increase speed every 5 points
+                if (score % 5 === 0) {
+                    clearInterval(gameLoop);
+                    // Minimum speed cap of 50ms
+                    const newSpeed = Math.max(50, GAME_SPEED - (score * 2)); 
+                    gameLoop = setInterval(updateGame, newSpeed);
+                }
             } else {
                 snake.pop();
             }
@@ -388,7 +401,30 @@
            
             snake.forEach((segment, index) => {
                 if (index === 0) {
-                    ctx.fillStyle = '#2ecc71';
+                    ctx.fillStyle = '#2ecc71'; // Head color
+                    drawRoundedRect(
+                        segment.x * GRID_SIZE + 1,
+                        segment.y * GRID_SIZE + 1,
+                        GRID_SIZE - 2,
+                        GRID_SIZE - 2,
+                        4
+                    );
+                    
+                    // Draw Eyes
+                    ctx.fillStyle = 'black';
+                    const eyeSize = 2;
+                    const offset = 5;
+                    
+                    // Position eyes based on current direction
+                    if (direction === DIRECTIONS.RIGHT || direction === DIRECTIONS.LEFT) {
+                        ctx.fillRect(segment.x * GRID_SIZE + 10, segment.y * GRID_SIZE + 5, eyeSize, eyeSize);
+                        ctx.fillRect(segment.x * GRID_SIZE + 10, segment.y * GRID_SIZE + 13, eyeSize, eyeSize);
+                    } else {
+                        ctx.fillRect(segment.x * GRID_SIZE + 5, segment.y * GRID_SIZE + 10, eyeSize, eyeSize);
+                        ctx.fillRect(segment.x * GRID_SIZE + 13, segment.y * GRID_SIZE + 10, eyeSize, eyeSize);
+                    }
+                    
+                    return; // already drawn head
                 } else {
                     const greenValue = Math.max(100, 204 - (index * 8));
                     ctx.fillStyle = `rgb(46, ${greenValue}, 113)`;
@@ -430,30 +466,56 @@
             ctx.fill();
         }
 
+        // simple oscillator beep generator
+        function playSound(freq, type = 'square', duration = 0.1) {
+            const audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+            const osc = audioCtx.createOscillator();
+            const gain = audioCtx.createGain();
+
+            osc.type = type;
+            osc.frequency.setValueAtTime(freq, audioCtx.currentTime);
+            osc.connect(gain);
+            gain.connect(audioCtx.destination);
+
+            gain.gain.setValueAtTime(0.1, audioCtx.currentTime);
+            gain.gain.exponentialRampToValueAtTime(0.01, audioCtx.currentTime + duration);
+
+            osc.start();
+            osc.stop(audioCtx.currentTime + duration);
+        }
+
        
         function updateScore() {
-            scoreElement.textContent = `Score: ${score}`;
+            scoreElement.textContent = `Score: ${score} | High: ${highScore}`;
         }
 
        
         function endGame() {
             isGameOver = true;
             clearInterval(gameLoop);
+            
+            if (score > highScore) {
+                highScore = score;
+                localStorage.setItem('snakeHighScore', highScore);
+            }
+            
             finalScoreElement.textContent = score;
             gameOverPanel.style.display = 'block';
+            playSound(150, 'sawtooth', 0.5);
         }
 
        
         function setDirection(newDir) {
-            if (direction !== DIRECTIONS.DOWN && newDir === DIRECTIONS.UP) {
-                nextDirection = DIRECTIONS.UP;
-            } else if (direction !== DIRECTIONS.UP && newDir === DIRECTIONS.DOWN) {
-                nextDirection = DIRECTIONS.DOWN;
-            } else if (direction !== DIRECTIONS.RIGHT && newDir === DIRECTIONS.LEFT) {
-                nextDirection = DIRECTIONS.LEFT;
-            } else if (direction !== DIRECTIONS.LEFT && newDir === DIRECTIONS.RIGHT) {
-                nextDirection = DIRECTIONS.RIGHT;
-            }
+            const lastDir = inputQueue.length > 0 ? inputQueue[inputQueue.length - 1] : direction;
+            
+            // Prevent 180-degree turns against the last queued direction
+            if (newDir === DIRECTIONS.UP && lastDir !== DIRECTIONS.DOWN) inputQueue.push(DIRECTIONS.UP);
+            if (newDir === DIRECTIONS.DOWN && lastDir !== DIRECTIONS.UP) inputQueue.push(DIRECTIONS.DOWN);
+            if (newDir === DIRECTIONS.LEFT && lastDir !== DIRECTIONS.RIGHT) inputQueue.push(DIRECTIONS.LEFT);
+            if (newDir === DIRECTIONS.RIGHT && lastDir !== DIRECTIONS.LEFT) inputQueue.push(DIRECTIONS.RIGHT);
+            
+            // Limit queue to 2 moves to prevent "laggy" feeling
+            if (inputQueue.length > 2) inputQueue.shift();
         }
 
        
