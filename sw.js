@@ -1,10 +1,8 @@
 const CACHE_NAME = 'snake-game-v1';
 const ASSETS_TO_CACHE = [
     './',
-    './snake-game.html',
-    './manifest.json',
-    './icons/icon-192.png',
-    './icons/icon-512.png'
+    './index.html',
+    './manifest.json'
 ];
 
 self.addEventListener('install', (event) => {
@@ -60,7 +58,7 @@ self.addEventListener('fetch', (event) => {
                         return networkResponse;
                     })
                     .catch(() => {
-                        return caches.match('./snake-game.html');
+                        return caches.match('./index.html');
                     });
             })
     );
