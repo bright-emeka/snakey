@@ -1,0 +1,13 @@
+{
+  "name": "Classic Snake Game",
+  "short_name": "Snake",
+  "description": "A timeless arcade game built with HTML5 Canvas",
+  "start_url": "./",
+  "scope": "./",
+  "display": "standalone",
+  "orientation": "portrait",
+  "background_color": "#2c3e50",
+  "theme_color": "#2c3e50",
+  "categories": ["games", "entertainment"],
+  "lang": "en"
+}
